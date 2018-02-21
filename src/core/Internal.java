@@ -827,6 +827,22 @@ public final class Internal {
     }
   }
 
+  public static byte[] buildQualifierString(final long timestamp, final short flags) {
+    final long base_time;
+    if ((timestamp & Const.SECOND_MASK) != 0) {
+      // drop the ms timestamp to seconds to calculate the base timestamp
+      base_time = ((timestamp / 1000) - ((timestamp / 1000)
+              % Const.MAX_TIMESPAN));
+      final int qual = (int) ((timestamp/1000 - base_time) << Const.FLAG_BITS_STRING
+              | flags);
+      return Bytes.fromInt(qual);
+    } else {
+      base_time = (timestamp - (timestamp % Const.MAX_TIMESPAN));
+      final int qual = (int) ((timestamp - base_time) << Const.FLAG_BITS_STRING
+              | flags);
+      return Bytes.fromInt(qual);
+    }
+  }
   /**
    * Checks the qualifier to verify that it has data and that the offset is
    * within bounds

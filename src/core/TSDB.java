@@ -873,6 +873,14 @@ public final class TSDB {
     return addPointInternal(metric, timestamp, v, tags, flags);
   }
 
+  public Deferred<Object> addPointString(final String metric,
+                                   final long timestamp,
+                                   final String value,
+                                   final Map<String, String> tags) {
+
+    final short flags = (short)value.length();  // Just the length.
+    return addPointInternal(metric, timestamp, value.getBytes(), tags, flags);
+  }
   /**
    * Adds a double precision floating-point value data point in the TSDB.
    * @param metric A non-empty string.
@@ -1045,6 +1053,110 @@ public final class TSDB {
     if (ts_filter != null && ts_filter.filterDataPoints()) {
       return ts_filter.allowDataPoint(metric, timestamp, value, tags, flags)
           .addCallbackDeferring(new WriteCB());
+    }
+    return Deferred.fromResult(true).addCallbackDeferring(new WriteCB());
+  }
+
+  private Deferred<Object> addPointInternalString(final String metric,
+                                            final long timestamp,
+                                            final byte[] value,
+                                            final Map<String, String> tags,
+                                            final short flags) {
+    // we only accept positive unix epoch timestamps in seconds or milliseconds
+    if (timestamp < 0 || ((timestamp & Const.SECOND_MASK) != 0 &&
+            timestamp > 9999999999999L)) {
+      throw new IllegalArgumentException((timestamp < 0 ? "negative " : "bad")
+              + " timestamp=" + timestamp
+              + " when trying to add value=" + Arrays.toString(value) + '/' + flags
+              + " to metric=" + metric + ", tags=" + tags);
+    }
+    IncomingDataPoints.checkMetricAndTags(metric, tags);
+    final byte[] row = IncomingDataPoints.rowKeyTemplate(this, metric, tags);
+    final long base_time;
+    final byte[] qualifier = Internal.buildQualifierString(timestamp, flags);
+
+    if ((timestamp & Const.SECOND_MASK) != 0) {
+      // drop the ms timestamp to seconds to calculate the base timestamp
+      base_time = ((timestamp / 1000) -
+              ((timestamp / 1000) % Const.MAX_TIMESPAN));
+    } else {
+      base_time = (timestamp - (timestamp % Const.MAX_TIMESPAN));
+    }
+
+    /** Callback executed for chaining filter calls to see if the value
+     * should be written or not. */
+    final class WriteCB implements Callback<Deferred<Object>, Boolean> {
+      @Override
+      public Deferred<Object> call(final Boolean allowed) throws Exception {
+        if (!allowed) {
+          rejected_dps.incrementAndGet();
+          return Deferred.fromResult(null);
+        }
+
+        Bytes.setInt(row, (int) base_time, metrics.width() + Const.SALT_WIDTH());
+        RowKey.prefixKeyWithSalt(row);
+
+        Deferred<Object> result = null;
+        if (config.enable_appends()) {
+          final AppendDataPoints kv = new AppendDataPoints(qualifier, value);
+          final AppendRequest point = new AppendRequest(table, row, FAMILY,
+                  AppendDataPoints.APPEND_COLUMN_QUALIFIER, kv.getBytes());
+          result = client.append(point);
+        } else {
+          //TODO compaction string
+//          scheduleForCompaction(row, (int) base_time);
+          final PutRequest point = new PutRequest(table, row, FAMILY, qualifier, value);
+          result = client.put(point);
+        }
+
+        // Count all added datapoints, not just those that came in through PUT rpc
+        // Will there be others? Well, something could call addPoint programatically right?
+        datapoints_added.incrementAndGet();
+
+        // TODO(tsuna): Add a callback to time the latency of HBase and store the
+        // timing in a moving Histogram (once we have a class for this).
+
+        if (!config.enable_realtime_ts() && !config.enable_tsuid_incrementing() &&
+                !config.enable_tsuid_tracking() && rt_publisher == null) {
+          return result;
+        }
+
+        final byte[] tsuid = UniqueId.getTSUIDFromKey(row, METRICS_WIDTH,
+                Const.TIMESTAMP_BYTES);
+
+        // if the meta cache plugin is instantiated then tracking goes through it
+        if (meta_cache != null) {
+          meta_cache.increment(tsuid);
+        } else {
+          if (config.enable_tsuid_tracking()) {
+            if (config.enable_realtime_ts()) {
+              if (config.enable_tsuid_incrementing()) {
+                TSMeta.incrementAndGetCounter(TSDB.this, tsuid);
+              } else {
+                TSMeta.storeIfNecessary(TSDB.this, tsuid);
+              }
+            } else {
+              final PutRequest tracking = new PutRequest(meta_table, tsuid,
+                      TSMeta.FAMILY(), TSMeta.COUNTER_QUALIFIER(), Bytes.fromLong(1));
+              client.put(tracking);
+            }
+          }
+        }
+
+        if (rt_publisher != null) {
+          rt_publisher.sinkDataPoint(metric, timestamp, value, tags, tsuid, flags);
+        }
+        return result;
+      }
+      @Override
+      public String toString() {
+        return "addPointInternal Write Callback";
+      }
+    }
+
+    if (ts_filter != null && ts_filter.filterDataPoints()) {
+      return ts_filter.allowDataPoint(metric, timestamp, value, tags, flags)
+              .addCallbackDeferring(new WriteCB());
     }
     return Deferred.fromResult(true).addCallbackDeferring(new WriteCB());
   }

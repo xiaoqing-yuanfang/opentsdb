@@ -75,7 +75,7 @@ final class PutDataPointRpc implements TelnetRpc, HttpRpc {
           return "report error to channel";
         }
       }
-      return importDataPoint(tsdb, cmd).addErrback(new PutErrback());
+      return importDataPointString(tsdb, cmd).addErrback(new PutErrback());
     } catch (NumberFormatException x) {
       errmsg = "put: invalid value: " + x.getMessage() + '\n';
       invalid_values.incrementAndGet();
@@ -203,13 +203,15 @@ final class PutDataPointRpc implements TelnetRpc, HttpRpc {
           continue;
         }
         final Deferred<Object> deferred;
-        if (Tags.looksLikeInteger(dp.getValue())) {
-          deferred = tsdb.addPoint(dp.getMetric(), dp.getTimestamp(), 
-              Tags.parseLong(dp.getValue()), dp.getTags());
-        } else {
-          deferred = tsdb.addPoint(dp.getMetric(), dp.getTimestamp(), 
-              Float.parseFloat(dp.getValue()), dp.getTags());
-        }
+        deferred = tsdb.addPointString(dp.getMetric(), dp.getTimestamp(),
+              dp.getValue(), dp.getTags());
+//        if (Tags.looksLikeInteger(dp.getValue())) {
+//          deferred = tsdb.addPoint(dp.getMetric(), dp.getTimestamp(),
+//              Tags.parseLong(dp.getValue()), dp.getTags());
+//        } else {
+//          deferred = tsdb.addPoint(dp.getMetric(), dp.getTimestamp(),
+//              Float.parseFloat(dp.getValue()), dp.getTags());
+//        }
         if (synchronous) {
           deferreds.add(deferred.addCallback(new SuccessCB()));
         }
@@ -463,6 +465,39 @@ final class PutDataPointRpc implements TelnetRpc, HttpRpc {
     }
   }
 
+  private Deferred<Object> importDataPointString(final TSDB tsdb, final String[] words) {
+    words[0] = null; // Ditch the "put".
+    if (words.length < 5) {  // Need at least: metric timestamp value tag
+      //               ^ 5 and not 4 because words[0] is "put".
+      throw new IllegalArgumentException("not enough arguments"
+              + " (need least 4, got " + (words.length - 1) + ')');
+    }
+    final String metric = words[1];
+    if (metric.length() <= 0) {
+      throw new IllegalArgumentException("empty metric name");
+    }
+    final long timestamp;
+    if (words[2].contains(".")) {
+      timestamp = Tags.parseLong(words[2].replace(".", ""));
+    } else {
+      timestamp = Tags.parseLong(words[2]);
+    }
+    if (timestamp <= 0) {
+      throw new IllegalArgumentException("invalid timestamp: " + timestamp);
+    }
+    final String value = words[3];
+    if (value.length() <= 0) {
+      throw new IllegalArgumentException("empty value");
+    }
+    final HashMap<String, String> tags = new HashMap<String, String>();
+    for (int i = 4; i < words.length; i++) {
+      if (!words[i].isEmpty()) {
+        Tags.parse(tags, words[i]);
+      }
+    }
+    return tsdb.addPointString(metric, timestamp, value, tags);
+
+  }
 
   /**
    * Converts the string array to an IncomingDataPoint. WARNING: This method
