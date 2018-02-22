@@ -411,4 +411,10 @@ public class Downsampler implements SeekableView, DataPoint {
       return buf.toString();
     }
   }
+
+	@Override
+	public String getValue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

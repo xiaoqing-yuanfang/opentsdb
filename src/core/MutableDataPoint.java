@@ -142,4 +142,10 @@ public final class MutableDataPoint implements DataPoint {
         is_integer + ", value=" + 
         (is_integer ? value : Double.longBitsToDouble(value)) + ")";
   }
+
+	@Override
+	public String getValue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

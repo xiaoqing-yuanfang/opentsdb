@@ -52,5 +52,7 @@ public interface DataPoint {
    * {@link #longValue}'s return value casted to a {@code double}.
    */
   double toDouble();
+  
+  String getValue();
 
 }

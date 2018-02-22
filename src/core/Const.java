@@ -57,7 +57,7 @@ public final class Const {
 
   /** Number of LSBs in time_deltas reserved for flags.  */
   public static final short FLAG_BITS = 4;
-  public static final short FLAG_BITS_STRING = 20;
+  public static final short FLAG_BITS_STRING = 16;
 
   /** Number of LSBs in time_deltas reserved for flags.  */
   public static final short MS_FLAG_BITS = 6;
@@ -70,6 +70,7 @@ public final class Const {
 
   /** Mask to select the size of a value from the qualifier.  */
   public static final short LENGTH_MASK = 0x7;
+  public static final int LENGTH_MASK_STRING = 0x000FFFFF;
 
   /** Mask for the millisecond qualifier flag */
   public static final byte MS_BYTE_FLAG = (byte)0xF0;

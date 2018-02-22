@@ -129,4 +129,10 @@ final class DataPointsIterator implements SeekableView, DataPoint {
       + ", dp=" + dp + ')';
   }
 
+	@Override
+	public String getValue() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }

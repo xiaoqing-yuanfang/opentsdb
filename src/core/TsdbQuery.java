@@ -625,6 +625,7 @@ final class TsdbQuery implements Query {
        public Object call(final ArrayList<ArrayList<KeyValue>> rows)
          throws Exception {
          fetch_time += DateTime.nanoTime() - fetch_start;
+         System.out.println("aaaaa");
          try {
            if (rows == null) {
              scanlatency.add((int)DateTime.msFromNano(fetch_time));
@@ -826,6 +827,8 @@ final class TsdbQuery implements Query {
            datapoints.addRow(compacted);
            ++nrows;
          }
+
+
        }
      
        void close(final Exception e) {

@@ -268,6 +268,12 @@ final class RowSeq implements DataPoints {
                                    + Arrays.toString(values));
   }
 
+  static String extractStringPointValue(final byte[] values,
+      final int value_idx,
+      final int flags) {
+  	return new String(values, Const.UTF8_CHARSET);
+  }
+  
   public String metricName() {
     try {
       return metricNameAsync().joinUninterruptibly();
@@ -354,7 +360,7 @@ final class RowSeq implements DataPoints {
     } else if ((qualifiers[0] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
       return qualifiers.length / 4;
     } else {
-      return qualifiers.length / 2;
+      return qualifiers.length / 4;
     }
   }
 
@@ -635,7 +641,13 @@ final class RowSeq implements DataPoints {
       final byte vlen = (byte) ((flags & Const.LENGTH_MASK) + 1);
       return extractFloatingPointValue(values, value_index - vlen, flags);
     }
-
+    
+    public String stringValue() {
+      final int flags = qualifier;
+      final int vlen = ((flags & Const.FLAG_BITS_STRING));
+      return extractStringPointValue(values, value_index - vlen, flags);
+    }
+    
     public double toDouble() {
       return isInteger() ? longValue() : doubleValue();
     }
@@ -674,6 +686,12 @@ final class RowSeq implements DataPoints {
     public String toString() {
       return toStringSummary() + ", seq=" + RowSeq.this + ')';
     }
+
+		@Override
+		public String getValue() {
+			// TODO Auto-generated method stub
+			return stringValue();
+		}
 
   }
 

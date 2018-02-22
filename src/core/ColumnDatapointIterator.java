@@ -152,9 +152,9 @@ final class ColumnDatapointIterator implements Comparable<ColumnDatapointIterato
     }
     if (Internal.inMilliseconds(qualifier[qualifier_offset])) {
       current_qual_length = 4;
-      is_ms = true;
+      is_ms = false;
     } else {
-      current_qual_length = 2;
+      current_qual_length = 4;
       is_ms = false;
     }
     current_timestamp_offset = Internal.getOffsetFromQualifier(qualifier, qualifier_offset);

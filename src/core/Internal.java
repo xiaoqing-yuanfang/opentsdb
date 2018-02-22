@@ -630,7 +630,7 @@ public final class Internal {
    * @since 2.0
    */
   public static byte getValueLengthFromQualifier(final byte[] qualifier) {
-    return getValueLengthFromQualifier(qualifier, 0);
+    return getValueLengthFromQualifier_bk(qualifier, 0);
   }
   
   /**
@@ -642,7 +642,7 @@ public final class Internal {
    * outside of the qualifier array
    * @since 2.0
    */
-  public static byte getValueLengthFromQualifier(final byte[] qualifier, 
+  public static byte getValueLengthFromQualifier_bk(final byte[] qualifier, 
       final int offset) {
     validateQualifier(qualifier, offset);    
     short length;
@@ -654,6 +654,12 @@ public final class Internal {
     return (byte) (length + 1);
   }
 
+  public static short getValueLengthFromQualifier(final byte[] qualifier, 
+      final int offset) {
+    validateQualifier(qualifier, offset);    
+    short length =(short) ((short)qualifier[2]*16 + (short)qualifier[3]);
+    return length;
+  }
   /**
    * Returns the length, in bytes, of the qualifier: 2 or 4 bytes
    * @param qualifier The qualifier to parse
@@ -816,14 +822,12 @@ public final class Internal {
       // drop the ms timestamp to seconds to calculate the base timestamp
       base_time = ((timestamp / 1000) - ((timestamp / 1000) 
           % Const.MAX_TIMESPAN));
-      final int qual = (int) (((timestamp - (base_time * 1000) 
-          << (Const.MS_FLAG_BITS)) | flags) | Const.MS_FLAG);
+      final int qual = (int)(timestamp/1000 - base_time) << Const.FLAG_BITS_STRING | flags;
       return Bytes.fromInt(qual);
     } else {
       base_time = (timestamp - (timestamp % Const.MAX_TIMESPAN));
-      final short qual = (short) ((timestamp - base_time) << Const.FLAG_BITS
-          | flags);
-      return Bytes.fromShort(qual);
+      final int qual = (int)(timestamp - base_time) << Const.FLAG_BITS_STRING | flags;
+      return Bytes.fromInt(qual);
     }
   }
 

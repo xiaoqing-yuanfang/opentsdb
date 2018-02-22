@@ -187,6 +187,7 @@ public class AggregationIterator implements SeekableView, DataPoint,
    * their binary representation just happens to be stored in a {@code long}.
    */
   protected final long[] values;
+  protected final String[] values_string;
 
   /** The index in {@link #iterators} of the current Span being used. */
   private int current;
@@ -355,6 +356,8 @@ public class AggregationIterator implements SeekableView, DataPoint,
     final int size = iterators.length;
     timestamps = new long[size * 2];
     values = new long[size * 2];
+    values_string = new String[size * 2];
+
     // Initialize every Iterator, fetch their first values that fall
     // within our time range.
     int num_empty_spans = 0;
@@ -426,7 +429,7 @@ public class AggregationIterator implements SeekableView, DataPoint,
    * @param i The index in {@link #iterators} of the iterator.
    * @param dp The last data point returned by that iterator.
    */
-  private void putDataPoint(final int i, final DataPoint dp) {
+  private void putDataPoint_bk(final int i, final DataPoint dp) {
     timestamps[i] = dp.timestamp();
     if (dp.isInteger()) {
       //LOG.debug("Putting #" + i + " (long) " + dp.longValue()
@@ -440,6 +443,18 @@ public class AggregationIterator implements SeekableView, DataPoint,
     }
   }
 
+  /**
+   * Puts the next data point of an iterator in the internal buffer.
+   * @param i The index in {@link #iterators} of the iterator.
+   * @param dp The last data point returned by that iterator.
+   */
+  private void putDataPoint(final int i, final DataPoint dp) {
+    timestamps[i] = dp.timestamp();
+	  //LOG.debug("Putting #" + i + " (long) " + dp.longValue()
+	  //          + " @ time " + dp.timestamp());
+	  values_string[i] = dp.getValue();
+  }
+  
   // ------------------ //
   // Iterator interface //
   // ------------------ //
@@ -778,4 +793,16 @@ public class AggregationIterator implements SeekableView, DataPoint,
     return new AggregationIterator(iterators, start_time, end_time,
                                    aggregator, method, rate);
   }
+
+	@Override
+	public String getValue() {
+		// TODO Auto-generated method stub
+		for(String item : values_string) {
+			if(item != null){
+				return item;
+			}
+		}
+		return null;
+//		return Arrays.toString(values);
+	}
 }
