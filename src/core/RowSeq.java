@@ -226,7 +226,7 @@ final class RowSeq implements DataPoints {
 
   /**
    * Extracts the value of a cell containing a data point.
-   * @param value The contents of a cell in HBase.
+   * @param values The contents of a cell in HBase.
    * @param value_idx The offset inside {@code values} at which the value
    * starts.
    * @param flags The flags for this value.
@@ -249,7 +249,7 @@ final class RowSeq implements DataPoints {
 
   /**
    * Extracts the value of a cell containing a data point.
-   * @param value The contents of a cell in HBase.
+   * @param values The contents of a cell in HBase.
    * @param value_idx The offset inside {@code values} at which the value
    * starts.
    * @param flags The flags for this value.
@@ -268,10 +268,16 @@ final class RowSeq implements DataPoints {
                                    + Arrays.toString(values));
   }
 
+  /*
+  @param offset = offset in values
+  @param flags  = len of data
+   */
   static String extractStringPointValue(final byte[] values,
-      final int value_idx,
+      final int offset,
       final int flags) {
-  	return new String(values, Const.UTF8_CHARSET);
+  	byte[] dest = new byte[flags];
+  	System.arraycopy(values, offset, dest, 0, flags);
+  	return new String(dest, Const.UTF8_CHARSET);
   }
   
   public String metricName() {
@@ -347,21 +353,21 @@ final class RowSeq implements DataPoints {
   public int size() {
     // if we don't have a mix of second and millisecond qualifiers we can run
     // this in O(1), otherwise we have to run O(n)
-    if ((values[values.length - 1] & Const.MS_MIXED_COMPACT) == 
-      Const.MS_MIXED_COMPACT) {
-      int size = 0;
-      for (int i = 0; i < qualifiers.length; i += 2) {
-        if ((qualifiers[i] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
-          i += 2;
-        }
-        size++;
-      }
-      return size;
-    } else if ((qualifiers[0] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//    if ((values[values.length - 1] & Const.MS_MIXED_COMPACT) == 
+//      Const.MS_MIXED_COMPACT) {
+//      int size = 0;
+//      for (int i = 0; i < qualifiers.length; i += 2) {
+//        if ((qualifiers[i] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//          i += 2;
+//        }
+//        size++;
+//      }
+//      return size;
+//    } else if ((qualifiers[0] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//      return qualifiers.length / 4;
+//    } else {
       return qualifiers.length / 4;
-    } else {
-      return qualifiers.length / 4;
-    }
+//    }
   }
 
   /** @return 0 since aggregation cannot happen at the row level */
@@ -401,26 +407,26 @@ final class RowSeq implements DataPoints {
     // if we don't have a mix of second and millisecond qualifiers we can run
     // this in O(1), otherwise we have to run O(n)
     // Important: Span.addRow assumes this method to work in O(1).
-    if ((values[values.length - 1] & Const.MS_MIXED_COMPACT) == 
-      Const.MS_MIXED_COMPACT) {
-      int index = 0;
-      for (int idx = 0; idx < qualifiers.length; idx += 2) {
-        if (i == index) {
-          return Internal.getTimestampFromQualifier(qualifiers, baseTime(), idx);
-        }
-        if (Internal.inMilliseconds(qualifiers[idx])) {
-          idx += 2;
-        }      
-        index++;
-      }
-    } else if ((qualifiers[0] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//    if ((values[values.length - 1] & Const.MS_MIXED_COMPACT) == 
+//      Const.MS_MIXED_COMPACT) {
+//      int index = 0;
+//      for (int idx = 0; idx < qualifiers.length; idx += 2) {
+//        if (i == index) {
+//          return Internal.getTimestampFromQualifier(qualifiers, baseTime(), idx);
+//        }
+//        if (Internal.inMilliseconds(qualifiers[idx])) {
+//          idx += 2;
+//        }      
+//        index++;
+//      }
+//    } else if ((qualifiers[0] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//      return Internal.getTimestampFromQualifier(qualifiers, baseTime(), i * 4);
+//    } else {
       return Internal.getTimestampFromQualifier(qualifiers, baseTime(), i * 4);
-    } else {
-      return Internal.getTimestampFromQualifier(qualifiers, baseTime(), i * 2);
-    }
+//    }
     
-    throw new RuntimeException(
-        "WTF timestamp for index: " + i + " on " + this);
+//    throw new RuntimeException(
+//        "WTF timestamp for index: " + i + " on " + this);
   }
 
   public boolean isInteger(final int i) {
@@ -558,15 +564,15 @@ final class RowSeq implements DataPoints {
         throw new NoSuchElementException("no more elements");
       }
       
-      if (Internal.inMilliseconds(qualifiers[qual_index])) {
-        qualifier = Bytes.getInt(qualifiers, qual_index);
-        qual_index += 4;
-      } else {
-        qualifier = Bytes.getUnsignedShort(qualifiers, qual_index);
-        qual_index += 2;
-      }
-      final byte flags = (byte) qualifier;
-      value_index += (flags & Const.LENGTH_MASK) + 1;
+//      if (Internal.inMilliseconds(qualifiers[qual_index])) {
+      qualifier = Bytes.getInt(qualifiers, qual_index);
+      qual_index += 4;
+//      } else {
+//        qualifier = Bytes.getUnsignedShort(qualifiers, qual_index);
+//        qual_index += 2;
+//      }
+      final short flags = (short) qualifier;
+      value_index += flags;
       //LOG.debug("next -> now=" + toStringSummary());
       return this;
     }
@@ -589,15 +595,11 @@ final class RowSeq implements DataPoints {
       //LOG.debug("Peeking timestamp: " + (peekNextTimestamp() < timestamp));
       while (qual_index < len && peekNextTimestamp() < timestamp) {
         //LOG.debug("Moving to next timestamp: " + peekNextTimestamp());
-        if (Internal.inMilliseconds(qualifiers[qual_index])) {
-          qualifier = Bytes.getInt(qualifiers, qual_index);
-          qual_index += 4;
-        } else {
-          qualifier = Bytes.getUnsignedShort(qualifiers, qual_index);
-          qual_index += 2;
-        }
-        final byte flags = (byte) qualifier;
-        value_index += (flags & Const.LENGTH_MASK) + 1;
+        qualifier = Bytes.getInt(qualifiers, qual_index);
+        qual_index += 4;
+  
+        final short flags = (short) qualifier;
+        value_index += flags;
       }
       //LOG.debug("seek to " + timestamp + " -> now=" + toStringSummary());
     }
@@ -608,13 +610,8 @@ final class RowSeq implements DataPoints {
 
     public long timestamp() {
       assert qual_index > 0: "not initialized: " + this;
-      if ((qualifier & Const.MS_FLAG) == Const.MS_FLAG) {
-        final long ms = (qualifier & 0x0FFFFFC0) >>> (Const.MS_FLAG_BITS);
-        return (base_time * 1000) + ms;            
-      } else {
-        final long seconds = (qualifier & 0xFFFF) >>> Const.FLAG_BITS;
-        return (base_time + seconds) * 1000;
-      }
+      final long seconds = qualifier  >> Const.FLAG_BITS_STRING;
+      return (base_time + seconds) * 1000;
     }
 
     public boolean isInteger() {
@@ -644,8 +641,8 @@ final class RowSeq implements DataPoints {
     
     public String stringValue() {
       final int flags = qualifier;
-      final int vlen = ((flags & Const.FLAG_BITS_STRING));
-      return extractStringPointValue(values, value_index - vlen, flags);
+      final int vlen = (short)flags;
+      return extractStringPointValue(values, value_index-vlen, vlen);
     }
     
     public double toDouble() {
@@ -687,11 +684,10 @@ final class RowSeq implements DataPoints {
       return toStringSummary() + ", seq=" + RowSeq.this + ')';
     }
 
-		@Override
-		public String getValue() {
-			// TODO Auto-generated method stub
-			return stringValue();
-		}
+    @Override
+    public String getValue() {
+        return stringValue();
+    }
 
   }
 

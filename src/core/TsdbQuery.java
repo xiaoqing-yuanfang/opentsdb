@@ -625,7 +625,6 @@ final class TsdbQuery implements Query {
        public Object call(final ArrayList<ArrayList<KeyValue>> rows)
          throws Exception {
          fetch_time += DateTime.nanoTime() - fetch_start;
-         System.out.println("aaaaa");
          try {
            if (rows == null) {
              scanlatency.add((int)DateTime.msFromNano(fetch_time));
@@ -787,18 +786,8 @@ final class TsdbQuery implements Query {
          // the byte arrays so we'll just get a rough estimate of compacted
          // columns.
          for (final KeyValue kv : row) {
-           if (kv.qualifier().length % 2 == 0) {
-             if (kv.qualifier().length == 2 || kv.qualifier().length == 4) {
+           if (kv.qualifier().length % 4 == 0) {
                ++dps_post_filter;
-             } else {
-               // for now we'll assume that all compacted columns are of the 
-               // same precision. This is likely incorrect.
-               if (Internal.inMilliseconds(kv.qualifier())) {
-                 dps_post_filter += (kv.qualifier().length / 4);
-               } else {
-                 dps_post_filter += (kv.qualifier().length / 2);
-               }
-             }
            } else if (kv.qualifier()[0] == AppendDataPoints.APPEND_COLUMN_PREFIX) {
              // with appends we don't have a good rough estimate as the length
              // can vary widely with the value length variability. Therefore we

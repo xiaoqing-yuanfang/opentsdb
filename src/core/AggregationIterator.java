@@ -536,6 +536,7 @@ public class AggregationIterator implements SeekableView, DataPoint,
     final int next = iterators.length + i;
     timestamps[i] = timestamps[next];
     values[i] = values[next];
+    values_string[i] = values_string[next];
     //LOG.debug("Moving #" + next + " -> #" + i
     //          + ((timestamps[i] & FLAG_FLOAT) == FLAG_FLOAT
     //             ? " float " + Double.longBitsToDouble(values[i])
@@ -755,6 +756,7 @@ public class AggregationIterator implements SeekableView, DataPoint,
   public String toString() {
     return "SpanGroup.Iterator(timestamps=" + Arrays.toString(timestamps)
       + ", values=" + Arrays.toString(values)
+      + ", values_string=" + Arrays.toString(values_string)
       + ", current=" + current
       + ", pos=" + pos
       + ", (SpanGroup: " + toStringSharedAttributes()

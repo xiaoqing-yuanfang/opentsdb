@@ -612,14 +612,14 @@ public final class Internal {
   public static int getOffsetFromQualifier(final byte[] qualifier, 
       final int offset) {
     validateQualifier(qualifier, offset);
-    if ((qualifier[offset] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
-      return (int)(Bytes.getUnsignedInt(qualifier, offset) & 0x0FFFFFC0) 
-        >>> Const.MS_FLAG_BITS;
-    } else {
-      final int seconds = (Bytes.getUnsignedShort(qualifier, offset) & 0xFFFF) 
-        >>> Const.FLAG_BITS;
+//    if ((qualifier[offset] & Const.MS_BYTE_FLAG) == Const.MS_BYTE_FLAG) {
+//      return (int)(Bytes.getUnsignedInt(qualifier, offset) & 0x0FFFFFC0) 
+//        >>> Const.MS_FLAG_BITS;
+//    } else {
+      final int seconds = Bytes.getInt(qualifier, offset) >> Const.FLAG_BITS_STRING;
+//        >>> Const.FLAG_BITS;
       return seconds * 1000;
-    }
+//    }
   }
   
   /**
