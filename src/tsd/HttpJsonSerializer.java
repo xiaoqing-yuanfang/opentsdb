@@ -781,18 +781,19 @@ class HttpJsonSerializer extends HttpSerializer {
                   dp.timestamp() : dp.timestamp() / 1000;
               json.writeStartArray();
               json.writeNumber(timestamp);
-              if (dp.isInteger()) {
-                json.writeNumber(dp.longValue());
-              } else { 
-                // Report missing intervals as null or NaN.
-                final double value = dp.doubleValue();
-                if (Double.isNaN(value) && 
-                    orig_query.fillPolicy() == FillPolicy.NULL) {
-                  json.writeNull();
-                } else {
-                  json.writeNumber(dp.doubleValue());
-                }
-              }
+//              if (dp.isInteger()) {
+//                json.writeNumber(dp.longValue());
+//              } else { 
+//                // Report missing intervals as null or NaN.
+//                final double value = dp.doubleValue();
+//                if (Double.isNaN(value) && 
+//                    orig_query.fillPolicy() == FillPolicy.NULL) {
+//                  json.writeNull();
+//                } else {
+//                  json.writeNumber(dp.doubleValue());
+//                }
+//              }
+              json.writeString(dp.getValue());
               json.writeEndArray();
               ++counter;
             }
@@ -804,20 +805,21 @@ class HttpJsonSerializer extends HttpSerializer {
                   dp.timestamp() > (data_query.endTime())) {
                 continue;
               }
-              final long timestamp = data_query.getMsResolution() ? 
-                  dp.timestamp() : dp.timestamp() / 1000;
-              if (dp.isInteger()) {
-                json.writeNumberField(Long.toString(timestamp), dp.longValue());
-              } else {
-                // Report missing intervals as null or NaN.
-                final double value = dp.doubleValue();
-                if (Double.isNaN(value) && 
-                    orig_query.fillPolicy() == FillPolicy.NULL) {
-                  json.writeNumberField(Long.toString(timestamp), null);
-                } else {
-                  json.writeNumberField(Long.toString(timestamp), dp.doubleValue());
-                }
-              }
+              final long timestamp = dp.timestamp() / 1000;
+//              if (dp.isInteger()) {
+//                json.writeNumberField(Long.toString(timestamp), dp.longValue());
+//              } else {
+//                // Report missing intervals as null or NaN.
+//                final double value = dp.doubleValue();
+//                if (Double.isNaN(value) && 
+//                    orig_query.fillPolicy() == FillPolicy.NULL) {
+//                  json.writeNumberField(Long.toString(timestamp), null);
+//                } else {
+//                  json.writeNumberField(Long.toString(timestamp), dp.doubleValue());
+//                }
+//              }
+              json.writeStringField(Long.toString(timestamp), dp.getValue());
+
               ++counter;
             }
             json.writeEndObject();
