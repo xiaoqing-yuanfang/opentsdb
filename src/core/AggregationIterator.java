@@ -798,13 +798,13 @@ public class AggregationIterator implements SeekableView, DataPoint,
 
 	@Override
 	public String getValue() {
-		// TODO Auto-generated method stub
-		for(String item : values_string) {
-			if(item != null){
-				return item;
-			}
-		}
-		return null;
+//		// TODO Auto-generated method stub
+//		for(String item : values_string) {
+//			if(item != null){
+//				return item;
+//			}
+//		}
+		return values_string[current];
 //		return Arrays.toString(values);
 	}
 }
