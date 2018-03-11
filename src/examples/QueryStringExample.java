@@ -70,7 +70,7 @@ public class QueryStringExample {
     // at least one sub query required. This is where you specify the metric and
     // tags
     final TSSubQuery subQuery = new TSSubQuery();
-    subQuery.setMetric("my.tsdb.test.metric");
+    subQuery.setMetric("test.metrics");
 
     // filters are optional but useful.
 //    final List<TagVFilter> filters = new ArrayList<TagVFilter>(1);

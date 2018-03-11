@@ -16,6 +16,9 @@ package net.opentsdb.examples;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.util.List;
 
 import com.stumbleupon.async.Callback;
 import com.stumbleupon.async.Deferred;
@@ -24,12 +27,50 @@ import net.opentsdb.core.TSDB;
 import net.opentsdb.uid.NoSuchUniqueName;
 import net.opentsdb.uid.UniqueId.UniqueIdType;
 import net.opentsdb.utils.Config;
+import com.fasterxml.jackson.databind.ObjectMapper;  
 
 /**
  * Examples for how to add points to the tsdb.
  * 
  */
-public class AddDataExampleString {
+	public class AddDataExampleString {
+		
+		public static class User {  
+	    private String name;  
+	    private Integer age;  
+	    private Date birthday;  
+	    private String email;  
+	      
+	    public String getName() {  
+	        return name;  
+	    }  
+	    public void setName(String name) {  
+	        this.name = name;  
+	    }  
+	      
+	    public Integer getAge() {  
+	        return age;  
+	    }  
+	    public void setAge(Integer age) {  
+	        this.age = age;  
+	    }  
+	      
+	    public Date getBirthday() {  
+	        return birthday;  
+	    }  
+	    public void setBirthday(Date birthday) {  
+	        this.birthday = birthday;  
+	    }  
+	      
+	    public String getEmail() {  
+	        return email;  
+	    }  
+	    public void setEmail(String email) {  
+	        this.email = email;  
+	    }  
+	}
+	/* init user */
+		
   private static String pathToConfigFile;
   
   public static void processArgs(final String[] args) {
@@ -42,7 +83,35 @@ public class AddDataExampleString {
 
   public static void main(final String[] args) throws Exception {
     processArgs(args);
-    
+ 
+    /* init user */
+    User user = new User();  
+    user.setName("小民");   
+    user.setEmail("xiaomin@sina.com");  
+    user.setAge(20);  
+    SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd");  
+    user.setBirthday(dateformat.parse("1996-10-01"));         
+      
+    /** 
+     * ObjectMapper是JSON操作的核心，Jackson的所有JSON操作都是在ObjectMapper中实现。 
+     * ObjectMapper有多个JSON序列化的方法，可以把JSON字符串保存File、OutputStream等不同的介质中。 
+     * writeValue(File arg0, Object arg1)把arg1转成json序列，并保存到arg0文件中。 
+     * writeValue(OutputStream arg0, Object arg1)把arg1转成json序列，并保存到arg0输出流中。 
+     * writeValueAsBytes(Object arg0)把arg0转成json序列，并把结果输出成字节数组。 
+     * writeValueAsString(Object arg0)把arg0转成json序列，并把结果输出成字符串。 
+     */  
+    ObjectMapper mapper = new ObjectMapper();  
+      
+    //User类转JSON  
+    //输出结果：{"name":"小民","age":20,"birthday":844099200000,"email":"xiaomin@sina.com"}  
+    String json = mapper.writeValueAsString(user);  
+    System.out.println(json); 
+      
+    //Java集合转JSON  
+    //输出结果：[{"name":"小民","age":20,"birthday":844099200000,"email":"xiaomin@sina.com"}]  
+    List<User> users = new ArrayList<User>();  
+    users.add(user);  
+    String jsonlist = mapper.writeValueAsString(users);
     // Create a config object with a path to the file for parsing. Or manually
     // override settings.
     // e.g. config.overrideConfig("tsd.storage.hbase.zk_quorum", "localhost");
@@ -56,7 +125,7 @@ public class AddDataExampleString {
     final TSDB tsdb = new TSDB(config);
 
     // Declare new metric
-    String metricName = "my.tsdb.test.metric";
+    String metricName = "test.metrics";
     // First check to see it doesn't already exist
     byte[] byteMetricUID; // we don't actually need this for the first
                           // .addPoint() call below.
@@ -77,7 +146,7 @@ public class AddDataExampleString {
     }
 
     // Make a single datum
-    long timestamp = System.currentTimeMillis() / 1000;
+    long timestamp = System.currentTimeMillis() / 1000- 24*60*60;
     String value = "HelloWorld";
     // Make key-val
     Map<String, String> tags = new HashMap<String, String>(1);
@@ -97,7 +166,24 @@ public class AddDataExampleString {
       deferreds.add(deferred);
       timestamp += 60;
     }
+
+    try {
+      byteMetricUID = tsdb.getUID(UniqueIdType.METRIC, "test.users");
+    } catch (IllegalArgumentException iae) {
+      System.out.println("Metric name not valid.");
+      iae.printStackTrace();
+      System.exit(1);
+    } catch (NoSuchUniqueName nsune) {
+      // If not, great. Create it.
+      byteMetricUID = tsdb.assignUid("metric", "test.users");
+    }
     
+    for (int i = 0; i < n; i++) {
+      tags.put("host", "test" + i);
+      Deferred<Object> deferred = tsdb.addPointString("test.users", timestamp, jsonlist, tags);
+      deferreds.add(deferred);
+      timestamp += 60;
+    }
     // Add the callbacks to the deferred object. (They might have already
     // returned, btw)
     // This will cause the calling thread to wait until the add has completed.
